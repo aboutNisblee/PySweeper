@@ -1,0 +1,16 @@
+# IDE
+/.settings
+/.project
+/.pydevproject
+
+# Backup
+*.org
+*.orig
+*.bak
+
+# Db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__
