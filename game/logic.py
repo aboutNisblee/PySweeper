@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# coding=utf-8
 """
 Created on 29.10.2015
 
@@ -25,6 +26,7 @@ class Matrix(object):
     """
     :todo: Pay attention to deep copies!
     """
+
     def __init__(self, columns=2, rows=2, bombs=1):
         self.matrix = self._matrix_generator(columns, rows)
 

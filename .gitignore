@@ -2,6 +2,7 @@
 /.settings
 /.project
 /.pydevproject
+/.idea
 
 # Backup
 *.org
