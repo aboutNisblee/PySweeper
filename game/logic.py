@@ -36,6 +36,9 @@ class Matrix(object):
     def _column_generator(self, column, rows):
         return [Field(column, r) for r in range(rows)]
 
+    def __len__(self):
+        return len(self.matrix) * len(self.matrix[0])
+
     def __str__(self):
         return self._str(lambda c, r: str(self.matrix[c][r]))
 
@@ -86,6 +89,7 @@ class Matrix(object):
 if __name__ == '__main__':
     logging.info('Run tests')
     matrix = Matrix(15, 10)
+    print('Field count: {}\n'.format(len(matrix)))
     print('Printing:')
     print('__str__:\n{}'.format(matrix))
     print('str_matrix:\n{}'.format(matrix.str_matrix()))
