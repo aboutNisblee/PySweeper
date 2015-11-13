@@ -9,6 +9,7 @@ Created on 29.10.2015
 import logging
 from random import randint
 
+
 class Neighbours(object):
     pass
 
@@ -16,11 +17,9 @@ class Neighbours(object):
 class Field(object):
     """
     A single field in the matrix.
-    To be able to determine bombs after creation of the fields,
-    a Field can also be a bomb.
     """
 
-    def __init__(self, column, row):
+    def __init__(self, column, row, matrix):
         """
         Initialize a new Field.
         :param column: The column index.
@@ -28,9 +27,12 @@ class Field(object):
         """
         if column < 0 or row < 0:
             raise ValueError('Column/row index cannot be negative')
+        if not isinstance(matrix, Matrix):
+            raise TypeError('Should pass a Matrix object')
 
-        self.column = column
-        self.row = row
+        self._matrix = matrix
+        self._column = column
+        self._row = row
         self._bomb = False
         self.adjacent_bombs = 0
 
@@ -51,6 +53,14 @@ class Field(object):
             (self.column + 1, self.row + 1),
         )
 
+    @property
+    def column(self):
+        return self._column
+
+    @property
+    def row(self):
+        return self._row
+
     def reg_neighbour(self, field):
         """
         Register another Field a a neighbour of this one.
@@ -58,18 +68,16 @@ class Field(object):
         """
         self.neighbours.append(field)
 
-    def link(self, matrix):
-        if not isinstance(matrix, Matrix):
-            raise TypeError('Should pass a Matrix object')
+    def link(self):
         for c, r in self.n_idx:
-            if c < 0 or r < 0 or c >= matrix.columns() or r >= matrix.rows():
+            if c < 0 or r < 0 or c >= self._matrix.columns() or r >= self._matrix.rows():
                 continue
             else:
-                matrix[c][r].reg_neighbour(self)
+                self._matrix[c][r].reg_neighbour(self)
 
     @property
     def bomb(self):
-        """ Is this field a bomb. """
+        """ Is it a bomb? """
         return self._bomb
 
     def set_bomb(self, value=True):
@@ -88,11 +96,11 @@ class Field(object):
             f.adjacent_bombs += 1
         return True
 
-    def print_mark(self):
+    def console_symbol(self):
         return 'X' if self.bomb else str(self.adjacent_bombs)
 
     def __str__(self):
-        return 'C:{} R:{} B:{}'.format(self.column, self.row, self._bomb)
+        return 'C:{} R:{} S:{}'.format(self.column, self.row, self.console_symbol())
 
 
 class Matrix(object):
@@ -101,60 +109,81 @@ class Matrix(object):
     """
 
     def __init__(self, columns=2, rows=2, bombs=1):
-        self.matrix = []
-        for c in range(columns):
-            self.matrix.append([])
-            for r in range(rows):
-                self.matrix[c].append(Field(c, r))
+        self._bombs = bombs
 
-        # FIXME DRY
-        for c in range(columns):
-            for r in range(rows):
-                self.matrix[c][r].link(self)
+        self._matrix = [[Field(c, r, self) for r in range(rows)] for c in range(columns)]
+
+        for field in self._col_wise():
+            field.link()
 
         b = 0
         while b < bombs:
             c = randint(0, columns - 1)
             r = randint(0, rows - 1)
-            if self.matrix[c][r].set_bomb(True):
+            if self._matrix[c][r].set_bomb(True):
                 b += 1
 
     def columns(self):
-        return len(self.matrix)
+        return len(self._matrix)
 
     def rows(self):
-        return len(self.matrix[0])
+        return len(self._matrix[0])
+
+    @property
+    def bombs(self):
+        return self._bombs
+
+    @property
+    def matrix(self):
+        return self._matrix
+
+    def _col_wise(self, yield_col=False):
+        """
+        Column-wise field generator.
+        :param yield_col: If true yielding after a complete row.
+         """
+        for c in range(self.columns()):
+            for r in range(self.rows()):
+                yield (self._matrix[c][r])
+            if yield_col:
+                yield False
+
+    def _row_wise(self, yield_row=False):
+        """
+        Row-wise field generator.
+        :param yield_row: If true yielding after a complete row.
+        """
+        for r in range(self.rows()):
+            for c in range(self.columns()):
+                yield (self._matrix[c][r])
+            if yield_row:
+                yield False  # TODO Whats the best type for None?? None? :D
 
     def __len__(self):
-        return len(self.matrix) * len(self.matrix[0])
+        """ Get the count of fields. """
+        return len(self._matrix) * len(self._matrix[0])
 
     def __str__(self):
-        return self._str(lambda c, r: str(self.matrix[c][r]))
+        string = 'Columns {} Rows: {} Bombs: {}\n'.format(self.columns(), self.rows(), self.bombs)
+        for field in self._col_wise():
+            string += str(field) + '\n'
+        return string
 
-    def str_matrix(self):
+    def console_matrix(self):
         """
         Get a nicely formatted representation of the matrix as string.
         This is mainly used for debugging or logging purposes.
-        :return: A string.
-        """
-        return self._str(lambda c, r: self.matrix[c][r].print_mark())
-
-    def _str(self, getter):
-        """
-        Get a string representation of the current matrix. Call the passed
-        callable for each field to insert the needed information.
         The matrix is displayed row-wise despite the internal representation
         is column-wise.
-        :param getter: A callable that takes the column and row indices
-        and returns a string.
         :return: A string.
         """
         string = ''  # Difference to usage of a list is not measurable
-        for r in range(self.rows()):
-            for c in range(self.columns()):
-                string += getter(c, r)
+        for field in self._row_wise(True):
+            if not field:
+                string += '\n'
+            else:
+                string += field.console_symbol()
                 string += ' '
-            string += '\n'
         return string
 
     def __getitem__(self, idx):
@@ -163,7 +192,7 @@ class Matrix(object):
             # This makes calls as matrix[1, 1] possible.
             # IndexError is possibly raised but not caught. OK?
             c_idx, r_idx = idx
-            return self.matrix[c_idx][r_idx]
+            return self._matrix[c_idx][r_idx]
         except (TypeError, ValueError):
             # If we get a TypeError only the column index was passed.
             # This makes calls like matrix[1][1] possible.
@@ -172,19 +201,19 @@ class Matrix(object):
             # 'TypeError: list indices must be integers, not str'
             # instead of
             # 'ValueError: need more than 1 value to unpack'
-            return self.matrix[idx]
+            return self._matrix[idx]
 
 
 def test():
     logging.info('Run tests')
     matrix = Matrix(12, 10, 10)
     print('Field count: {}\n'.format(len(matrix)))
-    # print('Printing:')
-    # print('__str__:\n{}'.format(matrix))
-    print('str_matrix:\n{}'.format(matrix.str_matrix()))
-    # print('Accessing:')
-    # print('matrix[1, 1] : {}'.format(str(matrix[1, 1])))
-    # print('matrix[1][-1]: {}'.format(str(matrix[1][-1])))
+    print('Printing:')
+    print('__str__:\n{}'.format(matrix))
+    print('console_matrix:\n{}'.format(matrix.console_matrix()))
+    print('Accessing:')
+    print('matrix[1, 1] : {}'.format(str(matrix[1, 1])))
+    print('matrix[1][-1]: {}'.format(str(matrix[1][-1])))
 
 
 if __name__ == '__main__':
