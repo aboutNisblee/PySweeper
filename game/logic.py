@@ -34,9 +34,9 @@ class Field(object):
         self._column = column
         self._row = row
         self._bomb = False
-        self.adjacent_bombs = 0
+        self._adjacent_bombs = 0
 
-        self.neighbours = []
+        self._neighbours = []
 
         # Determine indices of adjacent fields.
         self.n_idx = (
@@ -61,28 +61,40 @@ class Field(object):
     def row(self):
         return self._row
 
-    def reg_neighbour(self, field):
-        """
-        Register another Field a a neighbour of this one.
-        :param field: A neighbour.
-        """
-        self.neighbours.append(field)
-
-    def link(self):
-        for c, r in self.n_idx:
-            if c < 0 or r < 0 or c >= self._matrix.columns() or r >= self._matrix.rows():
-                continue
-            else:
-                self._matrix[c][r].reg_neighbour(self)
-
     @property
     def bomb(self):
         """ Is it a bomb? """
         return self._bomb
 
+    @property
+    def adjacent_bombs(self):
+        return self._adjacent_bombs
+
+    def add_neighbour(self, field):
+        """
+        Register another Field as a neighbour of this one.
+        :param field: A neighbour.
+        """
+        if field not in self._neighbours:
+            self._neighbours.append(field)
+
+    def add_adjacent_bomb(self):
+        self._adjacent_bombs += 1
+        logging.debug('C: {} R: {} new adjacent bomb count {}'.format(self._column, self._row, self._adjacent_bombs))
+
+    def link(self):
+        """
+        Register this field as neighbour in all adjacent fields.
+        """
+        for c, r in self.n_idx:
+            if c < 0 or r < 0 or c >= self._matrix.columns() or r >= self._matrix.rows():
+                continue
+            else:
+                self._matrix[c][r].add_neighbour(self)
+
     def set_bomb(self, value=True):
         """
-        Mark/unmark this field as bomb.
+        Mark/un-mark this field as bomb.
         :param value: The new value.
         :return: True when flag was changed, else False.
         """
@@ -90,14 +102,15 @@ class Field(object):
             raise TypeError('Bomb flag should be of type bool')
         if self._bomb == value:
             return False
+
         self._bomb = value
-        # TODO: Inform neighbours.
-        for f in self.neighbours:
-            f.adjacent_bombs += 1
+        # Increment bombs counters in all neighbours
+        for f in self._neighbours:
+            f.add_adjacent_bomb()
         return True
 
     def console_symbol(self):
-        return 'X' if self.bomb else str(self.adjacent_bombs)
+        return 'X' if self.bomb else str(self._adjacent_bombs)
 
     def __str__(self):
         return 'C:{} R:{} S:{}'.format(self.column, self.row, self.console_symbol())
@@ -164,7 +177,10 @@ class Matrix(object):
         return len(self._matrix) * len(self._matrix[0])
 
     def __str__(self):
-        string = 'Columns {} Rows: {} Bombs: {}\n'.format(self.columns(), self.rows(), self.bombs)
+        string = 'Matrix information:\n' \
+                 '{} fields in {} columns and {} rows\n' \
+                 'containing {} bombs\n' \
+                 'Field list:\n'.format(len(self), self.columns(), self.rows(), self.bombs)
         for field in self._col_wise():
             string += str(field) + '\n'
         return string
@@ -205,7 +221,11 @@ class Matrix(object):
 
 
 def test():
-    logging.info('Run tests')
+    # logger = logging.getLogger(__name__)
+    # logger.setLevel(logging.INFO)
+    # logger.debug('Run tests')
+    logging.basicConfig(level=logging.DEBUG)
+    logging.debug('Run tests')
     matrix = Matrix(12, 10, 10)
     print('Field count: {}\n'.format(len(matrix)))
     print('Printing:')
