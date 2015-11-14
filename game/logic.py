@@ -109,6 +109,15 @@ class Field(object):
             f.add_adjacent_bomb()
         return True
 
+    def reveal(self):
+        # TODO If no adjacent bombs, reveal neighbours.
+        # If bomb, fire lost.
+        pass
+
+    def mark(self):
+        # TODO
+        pass
+
     def console_symbol(self):
         return 'X' if self.bomb else str(self._adjacent_bombs)
 
@@ -126,7 +135,7 @@ class Matrix(object):
 
         self._matrix = [[Field(c, r, self) for r in range(rows)] for c in range(columns)]
 
-        for field in self._col_wise():
+        for field in Matrix.col_wise(self):
             field.link()
 
         b = 0
@@ -150,25 +159,27 @@ class Matrix(object):
     def matrix(self):
         return self._matrix
 
-    def _col_wise(self, yield_col=False):
+    @staticmethod
+    def col_wise(matrix, yield_col=False):
         """
         Column-wise field generator.
         :param yield_col: If true yielding after a complete row.
          """
-        for c in range(self.columns()):
-            for r in range(self.rows()):
-                yield (self._matrix[c][r])
+        for c in range(matrix.columns()):
+            for r in range(matrix.rows()):
+                yield (matrix[c][r])
             if yield_col:
                 yield False
 
-    def _row_wise(self, yield_row=False):
+    @staticmethod
+    def row_wise(matrix, yield_row=False):
         """
         Row-wise field generator.
         :param yield_row: If true yielding after a complete row.
         """
-        for r in range(self.rows()):
-            for c in range(self.columns()):
-                yield (self._matrix[c][r])
+        for r in range(matrix.rows()):
+            for c in range(matrix.columns()):
+                yield (matrix[c][r])
             if yield_row:
                 yield False  # TODO Whats the best type for None?? None? :D
 
@@ -181,7 +192,7 @@ class Matrix(object):
                  '{} fields in {} columns and {} rows\n' \
                  'containing {} bombs\n' \
                  'Field list:\n'.format(len(self), self.columns(), self.rows(), self.bombs)
-        for field in self._col_wise():
+        for field in Matrix.col_wise(self):
             string += str(field) + '\n'
         return string
 
@@ -194,7 +205,7 @@ class Matrix(object):
         :return: A string.
         """
         string = ''  # Difference to usage of a list is not measurable
-        for field in self._row_wise(True):
+        for field in Matrix.row_wise(self, True):
             if not field:
                 string += '\n'
             else:
