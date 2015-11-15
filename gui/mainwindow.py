@@ -16,7 +16,7 @@ class MainWindow(object):
 
         self.matrix = Matrix(10, 10, 5)
 
-        # TODO: Wrap button by using delegation and add simbols and desired behaviour.
+        # TODO: Wrap button by using delegation and add symbols and desired behaviour.
 
         self.fr_vert = Frame(parent)
         self.fr_vert.pack()

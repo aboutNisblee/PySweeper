@@ -36,10 +36,8 @@ class Field(object):
         self._bomb = False
         self._adjacent_bombs = 0
 
-        self._neighbours = []
-
         # Determine indices of adjacent fields.
-        self.n_idx = (
+        self._neighbour_idx = (
             # Upper row
             (self.column - 1, self.row - 1),
             (self.column, self.row - 1),
@@ -67,30 +65,15 @@ class Field(object):
         return self._bomb
 
     @property
+    def neighbour_idx(self):
+        """ Returns all valid neighbour indices.
+        :return: A tuple of column, row.
+        """
+        return ((c, r) for c, r in self._neighbour_idx if
+                not (c < 0 or r < 0 or c >= self._matrix.columns() or r >= self._matrix.rows()))
+
     def adjacent_bombs(self):
-        return self._adjacent_bombs
-
-    def add_neighbour(self, field):
-        """
-        Register another Field as a neighbour of this one.
-        :param field: A neighbour.
-        """
-        if field not in self._neighbours:
-            self._neighbours.append(field)
-
-    def add_adjacent_bomb(self):
-        self._adjacent_bombs += 1
-        logging.debug('C: {} R: {} new adjacent bomb count {}'.format(self._column, self._row, self._adjacent_bombs))
-
-    def link(self):
-        """
-        Register this field as neighbour in all adjacent fields.
-        """
-        for c, r in self.n_idx:
-            if c < 0 or r < 0 or c >= self._matrix.columns() or r >= self._matrix.rows():
-                continue
-            else:
-                self._matrix[c][r].add_neighbour(self)
+        return [self._matrix[idx].bomb for idx in self.neighbour_idx].count(True)
 
     def set_bomb(self, value=True):
         """
@@ -104,9 +87,6 @@ class Field(object):
             return False
 
         self._bomb = value
-        # Increment bombs counters in all neighbours
-        for f in self._neighbours:
-            f.add_adjacent_bomb()
         return True
 
     def reveal(self):
@@ -119,7 +99,7 @@ class Field(object):
         pass
 
     def console_symbol(self):
-        return 'X' if self.bomb else str(self._adjacent_bombs)
+        return 'X' if self.bomb else str(self.adjacent_bombs())
 
     def __str__(self):
         return 'C:{} R:{} S:{}'.format(self.column, self.row, self.console_symbol())
@@ -134,9 +114,6 @@ class Matrix(object):
         self._bombs = bombs
 
         self._matrix = [[Field(c, r, self) for r in range(rows)] for c in range(columns)]
-
-        for field in Matrix.col_wise(self):
-            field.link()
 
         b = 0
         while b < bombs:
@@ -163,6 +140,7 @@ class Matrix(object):
     def col_wise(matrix, yield_col=False):
         """
         Column-wise field generator.
+        :param matrix: The Matrix instance to iterate over.
         :param yield_col: If true yielding after a complete row.
          """
         for c in range(matrix.columns()):
@@ -175,6 +153,7 @@ class Matrix(object):
     def row_wise(matrix, yield_row=False):
         """
         Row-wise field generator.
+        :param matrix: The Matrix instance to iterate over.
         :param yield_row: If true yielding after a complete row.
         """
         for r in range(matrix.rows()):
