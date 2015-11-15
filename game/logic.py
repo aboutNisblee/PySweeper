@@ -10,8 +10,20 @@ import logging
 from random import randint
 
 
-class Neighbours(object):
-    pass
+class FieldObserver:
+    def on_reveal(self, field):
+        pass
+
+
+class MatrixObserver:
+    def on_win(self):
+        pass
+
+    def on_lost(self):
+        pass
+
+    def on_remaining_bombs_changed(self):
+        pass
 
 
 class Field(object):
@@ -34,7 +46,8 @@ class Field(object):
         self._column = column
         self._row = row
         self._bomb = False
-        self._adjacent_bombs = 0
+        self._revealed = False
+        self._obs = []
 
         # Determine indices of adjacent fields.
         self._neighbour_idx = (
@@ -53,16 +66,22 @@ class Field(object):
 
     @property
     def column(self):
+        """ Get the column index. """
         return self._column
 
     @property
     def row(self):
+        """ Get the row index. """
         return self._row
 
     @property
     def bomb(self):
         """ Is it a bomb? """
         return self._bomb
+
+    @property
+    def revealed(self):
+        return self._revealed
 
     @property
     def neighbour_idx(self):
@@ -72,7 +91,11 @@ class Field(object):
         return ((c, r) for c, r in self._neighbour_idx if
                 not (c < 0 or r < 0 or c >= self._matrix.columns() or r >= self._matrix.rows()))
 
+    def neighbours(self):
+        return (self._matrix[idx] for idx in self.neighbour_idx)
+
     def adjacent_bombs(self):
+        # TODO: Do I really need a list? Have a look at itertools.ifilter
         return [self._matrix[idx].bomb for idx in self.neighbour_idx].count(True)
 
     def set_bomb(self, value=True):
@@ -90,13 +113,31 @@ class Field(object):
         return True
 
     def reveal(self):
-        # TODO If no adjacent bombs, reveal neighbours.
-        # If bomb, fire lost.
-        pass
+        if self._revealed:
+            return
+        # Call handler, before locking second reveal.
+        # This way the handler is be able to determine state.
+        for ob in self._obs:
+            ob.on_reveal(self)
+        self._revealed = True
+        if not self.adjacent_bombs():
+            for n in self.neighbours():
+                n.reveal()
+        elif self.bomb:
+            # self.oberservers.lost()
+            print('LOST')
+            # TODO: Add win/lost check
 
     def mark(self):
         # TODO
         pass
+
+    def add_observer(self, observer):
+        if observer not in self._obs:
+            self._obs.append(observer)
+
+    def rem_observer(self, observer):
+        self._obs.remove(observer)
 
     def console_symbol(self):
         return 'X' if self.bomb else str(self.adjacent_bombs())
