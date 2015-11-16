@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # coding=utf-8
 """
 Created on 14.11.2015
@@ -6,7 +5,9 @@ Created on 14.11.2015
 :author: Moritz Nisblé (mNisblee) <moritz.nisble@gmx.de>
 """
 
+import os
 from tkinter import *
+
 from game.logic import *
 
 
@@ -27,11 +28,12 @@ class FieldButton(FieldObserver, Button):
 
 
 class MainWindow(object):
-    def __init__(self, parent):
+    def __init__(self, parent, columns, rows, bombs):
         self.parent = parent
-        self.matrix = Matrix(10, 10, 20)
+        self.matrix = Matrix(columns, rows, bombs)
 
-        # TODO: Wrap button by using delegation and add symbols and desired behaviour.
+        # TODO: Load images
+        # self.image = PhotoImage(file='../resources/unpushed_grayback_round_1.png')
 
         self.fr_vert = Frame(parent)
         self.fr_vert.pack(padx='0m', pady='0m')  # FIXME: Use grid!
@@ -49,8 +51,11 @@ class MainWindow(object):
                 self.fr_rows[-1].pack(padx='0m', pady='0m')
 
 
-if __name__ == '__main__':
+def run(columns=12, rows=10, bombs=10):
     root = Tk()
-    mainwindow = MainWindow(root)
-
+    mainwindow = MainWindow(root, columns, rows, bombs)
     root.mainloop()
+
+
+if __name__ == '__main__':
+    run()
