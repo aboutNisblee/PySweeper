@@ -8,6 +8,8 @@ Created on 29.10.2015
 import logging
 from random import randint
 
+from lib import Observable
+
 
 class FieldObserver:
     def on_reveal(self, field):
@@ -25,7 +27,7 @@ class MatrixObserver:
         pass
 
 
-class Field(object):
+class Field(Observable, object):
     """
     A single field in the matrix.
     """
@@ -36,6 +38,8 @@ class Field(object):
         :param column: The column index.
         :param row: The row index.
         """
+        super().__init__()
+
         if column < 0 or row < 0:
             raise ValueError('Column/row index cannot be negative')
         if not isinstance(matrix, Matrix):
@@ -46,7 +50,6 @@ class Field(object):
         self._row = row
         self._bomb = False
         self._revealed = False
-        self._obs = []
 
         # Determine indices of adjacent fields.
         self._neighbour_idx = (
@@ -116,7 +119,7 @@ class Field(object):
             return
         # Call handler, before locking second reveal.
         # This way the handler is be able to determine state.
-        for ob in self._obs:
+        for ob in self.observers:
             ob.on_reveal(self)
         self._revealed = True
         if not self.adjacent_bombs():
@@ -130,13 +133,6 @@ class Field(object):
     def mark(self):
         # TODO
         pass
-
-    def add_observer(self, observer):
-        if observer not in self._obs:
-            self._obs.append(observer)
-
-    def rem_observer(self, observer):
-        self._obs.remove(observer)
 
     def console_symbol(self):
         return 'X' if self.bomb else str(self.adjacent_bombs())

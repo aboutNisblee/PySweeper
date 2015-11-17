@@ -7,7 +7,7 @@ Created on 14.11.2015
 """
 
 import argparse
-from gui import mainwindow
+from gui import *
 
 
 def main():
@@ -17,9 +17,8 @@ def main():
     parser.add_argument('-b', '--bombs', help='Bomb count', type=int, default=10)
 
     args = parser.parse_args()
-
-    # TODO: Reduce file count; Add a controller.
-    mainwindow.run(args.columns, args.rows, args.bombs)
+    controller = Controller(args)
+    controller.run()
 
 
 if __name__ == '__main__':
