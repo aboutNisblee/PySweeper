@@ -52,7 +52,7 @@ class FieldButton(FieldObserver, tk.Button):
     def __init__(self, parent, field):
         tk.Button.__init__(self, parent)
         self._field = field
-        self.configure(command=self._field.reveal, image=g_theme.field_pics[0])
+        self.configure(command=self._field.reveal, image=g_theme.field_pics[0], width=64)
         self._field.add_observer(self)
 
     def on_reveal(self, field):
@@ -67,26 +67,19 @@ class FieldButton(FieldObserver, tk.Button):
 class GameGrid(object):
     """ View class that holds the game grid. """
 
-    def __init__(self, parent, matrix):
-        self._parent = parent
+    def __init__(self, master, matrix):
+        self._master = master
         self._matrix = matrix
 
-        self._fr_main = tk.Frame(self._parent)
-        # self._fr_main.pack(padx='0m', pady='0m')  # FIXME: Use grid and delegate destroy method to it!
-        self._fr_rows = [tk.Frame(self._fr_main), ]
-        self._fr_rows[0].pack(padx='0m', pady='0m')
-
-        for field in Matrix.row_wise(self._matrix, True):
-            if field:
-                bt = FieldButton(self._fr_rows[-1], field)
-                bt.configure(width=1)
-                bt.pack(side=tk.LEFT)
-            else:
-                self._fr_rows.append(tk.Frame(self._fr_main))
-                self._fr_rows[-1].pack(padx='0m', pady='0m')
+        self._container = tk.Frame(self._master)
+        for field in Matrix.row_wise(self._matrix):
+            bt = FieldButton(self._container, field)
+            self._container.columnconfigure(field.column, weight=1)
+            self._container.rowconfigure(field.row, weight=1)
+            bt.grid(column=field.column, row=field.row, sticky=tk.N + tk.E + tk.S + tk.W)
 
     def __getattr__(self, item):
-        return getattr(self._fr_main, item)
+        return getattr(self._container, item)
 
 
 class MainWindowObserver:
@@ -97,31 +90,34 @@ class MainWindowObserver:
         pass
 
 
-class MainWindow(Observable, object):
-    def __init__(self, parent):
-        super().__init__()
+class MainWindow(Observable, tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        Observable.__init__(self)
 
-        self._parent = parent
+        self.grid(sticky=tk.N + tk.E + tk.S + tk.W)
 
-        self._main_container = tk.Frame(self._parent)
-        self._main_container.pack()
+        # Expand window
+        top = self.winfo_toplevel()
+        top.rowconfigure(0, weight=1)
+        top.columnconfigure(0, weight=1)
 
-        self._control_container = tk.Frame(self._main_container)
-        self._control_container.pack()
-        self._new_game_button = tk.Button(self._control_container)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+        self._new_game_button = tk.Button(self)
         self._new_game_button.configure(command=self._on_new_game_pressed)
-        self._new_game_button.pack(anchor='center')
+        self._new_game_button.grid()
 
-        self._grid_container = tk.Frame(self._main_container)
-        self._grid_container.pack(expand=True)
         self._game_grid = None
 
-    def new_matrix(self, matrix):
+    def reset_matrix(self, matrix):
         if self._game_grid:
             # Remember to not use pack_forget()!! It may cause memory leaks!!
             self._game_grid.destroy()
-        self._game_grid = GameGrid(self._grid_container, matrix)
-        self._game_grid.pack()
+        self._game_grid = GameGrid(self, matrix)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
+        self._game_grid.grid(row=1, sticky=tk.N + tk.E + tk.S + tk.W)
 
     def _on_new_game_pressed(self):
         for obs in self.observers:
@@ -139,18 +135,14 @@ class Controller(MainWindowObserver, object):
         self._mainwindow = MainWindow(self._tkroot)
         self._mainwindow.add_observer(self)
 
-        self._matrix = Matrix(self._columns, self._rows, self._bombs)
-        # TODO: Dirrrty! GameGrid should wrap the frame or better a grid and delegate the destroy method.
-        self._mainwindow.new_matrix(self._matrix)
+        self.on_new_game_pressed()
 
     def run(self):
         """ Run the main loop. """
         self._tkroot.mainloop()
 
     def on_new_game_pressed(self):
-        print('New Game!')
-        self._matrix = Matrix(self._columns, self._rows, self._bombs)
-        self._mainwindow.new_matrix(self._matrix)
+        self._mainwindow.reset_matrix(Matrix(self._columns, self._rows, self._bombs))
 
 
 @memprof(threshold=1024, plot=True)
