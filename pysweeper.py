@@ -6,7 +6,6 @@ Created on 14.11.2015
 :author: Moritz Nisblé (mNisblee) <moritz.nisble@gmx.de>
 """
 
-import argparse
 from gui import *
 
 

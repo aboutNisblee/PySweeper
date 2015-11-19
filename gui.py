@@ -4,64 +4,39 @@ Created on 14.11.2015
 
 :author: Moritz Nisblé (mNisblee) <moritz.nisble@gmx.de>
 """
-import importlib
 import tkinter as tk
-from PIL import ImageTk
 from memprof import *
 from logic import *
+from resources.themes import Theme
 
-g_theme = None
-
-
-class Theme(object):
-    def __init__(self):
-        self.field_pics = None
-        self.load()
-
-    def load(self, theme='default'):
-        theme_mod = importlib.__import__('resources.themes.' + theme, globals(), locals(), ['*'], 0)
-        self.field_pics = [ImageTk.PhotoImage(image) for image in theme_mod.field_images]
-
-
-class Tk(object):
-    """
-    Tk wrapper.
-    Everything that must be loaded a startup and depends on a initialized Tk instance
-    can be loaded in the initializer of this class.
-    """
-
-    def __init__(self):
-        self._tk = tk.Tk()
-        global g_theme
-        g_theme = Theme()
-
-    @property
-    def tk(self):
-        return self._tk
-
-    def __getattr__(self, item):
-        return getattr(self._tk, item)
+g_theme = Theme()  # Global theme variable
 
 
 class FieldButton(FieldObserver, tk.Button):
     """
     Button subclass that represents a single field in the GUI,
-    observes its Field in the Matrix and reacts to callbacks made by it.
+    observes its Field in the Matrix and reacts to callbacks made by the logic.
     """
 
     def __init__(self, parent, field):
         tk.Button.__init__(self, parent)
         self._field = field
-        self.configure(command=self._field.reveal, image=g_theme.field_pics[0], width=64)
+        self.configure(command=self._field.reveal, image=g_theme.field_pic(g_theme.field_name_decode()))
         self._field.add_observer(self)
 
+    def refresh_theme(self):
+        pass
+
     def on_reveal(self, field):
+        """ Reveal callback handler. """
         # TODO: Register one handler for all fields and remove this class.
+        # If already revealed bail out, to break the chain.
         if field.revealed:
             return
-        self.configure(relief=tk.SUNKEN)
-        if field.adjacent_bombs() or field.bomb:
-            self.configure(text=str(field.console_symbol()))
+        self.configure(relief=tk.SUNKEN, image=g_theme.field_pic(
+            g_theme.field_name_decode(revealed=True,
+                                      adjacent_bombs=field.adjacent_bombs(),
+                                      bomb=field.bomb)))
 
 
 class GameGrid(object):
@@ -79,6 +54,7 @@ class GameGrid(object):
             bt.grid(column=field.column, row=field.row, sticky=tk.N + tk.E + tk.S + tk.W)
 
     def __getattr__(self, item):
+        """ Delegation to main frame. """
         return getattr(self._container, item)
 
 
@@ -111,6 +87,10 @@ class MainWindow(Observable, tk.Frame):
         self._game_grid = None
 
     def reset_matrix(self, matrix):
+        """
+        Show a new Matrix, delete the old one.
+        :param matrix: A Matrix object.
+        """
         if self._game_grid:
             # Remember to not use pack_forget()!! It may cause memory leaks!!
             self._game_grid.destroy()
@@ -120,7 +100,9 @@ class MainWindow(Observable, tk.Frame):
         self._game_grid.grid(row=1, sticky=tk.N + tk.E + tk.S + tk.W)
 
     def _on_new_game_pressed(self):
+        """ Internal callback handler for the new game button. """
         for obs in self.observers:
+            # Inform all observers
             obs.on_new_game_pressed()
 
 
@@ -130,9 +112,10 @@ class Controller(MainWindowObserver, object):
         self._rows = args.rows if 'rows' in args else 10
         self._bombs = args.bombs if 'bombs' in args else 10
 
-        self._tkroot = Tk()
+        self._tkroot = tk.Tk()
 
         self._mainwindow = MainWindow(self._tkroot)
+        # Register the Controller as observer of Mainwindow
         self._mainwindow.add_observer(self)
 
         self.on_new_game_pressed()
@@ -142,6 +125,7 @@ class Controller(MainWindowObserver, object):
         self._tkroot.mainloop()
 
     def on_new_game_pressed(self):
+        """ New game button callback handler. """
         self._mainwindow.reset_matrix(Matrix(self._columns, self._rows, self._bombs))
 
 
